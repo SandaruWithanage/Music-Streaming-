@@ -8,8 +8,9 @@ async function bootstrap() {
 
   app.useGlobalPipes(
     new ValidationPipe({
-      transform: true, // 🔴 converts strings → numbers
-      whitelist: true, // 🔴 strips unknown fields
+      whitelist: true,            // ✅ remove unknown fields
+      forbidNonWhitelisted: true, // ✅ reject bad requests
+      transform: true,            // ✅ convert input types
     }),
   );
 
