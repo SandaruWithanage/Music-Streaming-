@@ -1,66 +1,116 @@
 import { PrismaClient } from "@prisma/client";
+import { statSync } from "fs";
+import { join } from "path";
 
 const prisma = new PrismaClient();
 
+function fileSize(relativePath: string) {
+  const fullPath = join(__dirname, "..", "storage", relativePath);
+  return BigInt(statSync(fullPath).size);
+}
+
 async function main() {
-  // 1️⃣ Artists
-  const artist1 = await prisma.artist.create({
-    data: { name: "Demo Artist" },
+  // =========================
+  // 1️⃣ Artist (find or create)
+  // =========================
+  let artist = await prisma.artist.findFirst({
+    where: { name: "Demo Artist" },
   });
 
+  if (!artist) {
+    artist = await prisma.artist.create({
+      data: { name: "Demo Artist" },
+    });
+  }
+
+  // =========================
   // 2️⃣ Album
-  const album1 = await prisma.album.create({
-    data: {
+  // =========================
+  let album = await prisma.album.findFirst({
+    where: {
       title: "Demo Album",
-      artistId: artist1.id,
-      coverUrl: "https://example.com/cover.jpg",
+      artistId: artist.id,
     },
   });
 
-  // 3️⃣ Audio assets
-  const audio1 = await prisma.audioAsset.create({
-    data: {
-      storageKey: "demo-track-1.mp3",
-      mimeType: "audio/mpeg",
-      sizeBytes: BigInt(3000000),
-    },
-  });
+  if (!album) {
+    album = await prisma.album.create({
+      data: {
+        title: "Demo Album",
+        artistId: artist.id,
+        coverUrl: "https://example.com/cover.jpg",
+      },
+    });
+  }
 
-  const audio2 = await prisma.audioAsset.create({
-    data: {
-      storageKey: "demo-track-2.mp3",
-      mimeType: "audio/mpeg",
-      sizeBytes: BigInt(3200000),
-    },
-  });
+  // =========================
+  // 3️⃣ Audio Assets
+  // =========================
+  const audioFiles = [
+    "audio/song1.mp3",
+    "audio/song2.mp3",
+    "audio/song3.mp3",
+  ];
 
+  const audioAssets: { id: string }[] = [];
+
+  for (const key of audioFiles) {
+    let asset = await prisma.audioAsset.findUnique({
+      where: { storageKey: key },
+    });
+
+    if (!asset) {
+      asset = await prisma.audioAsset.create({
+        data: {
+          storageKey: key,
+          mimeType: "audio/mpeg",
+          sizeBytes: fileSize(key),
+        },
+      });
+    }
+
+    audioAssets.push({ id: asset.id });
+  }
+
+  // =========================
   // 4️⃣ Tracks
-  await prisma.track.createMany({
-    data: [
-      {
-        title: "Demo Track One",
-        durationSeconds: 210,
-        genre: "Pop",
-        isActive: true, 
-        artistId: artist1.id,
-        albumId: album1.id,
-        audioAssetId: audio1.id,
+  // =========================
+  const tracks = [
+    { title: "Song 1", durationSeconds: 180, genre: "Pop", asset: 0 },
+    { title: "Song 2", durationSeconds: 210, genre: "Pop", asset: 1 },
+    { title: "Song 3", durationSeconds: 185, genre: "classic", asset: 2 },
+  ];
+
+  for (const t of tracks) {
+    const existing = await prisma.track.findFirst({
+      where: {
+        title: t.title,
+        artistId: artist.id,
       },
-      {
-        title: "Demo Track Two",
-        durationSeconds: 180,
-        genre: "Pop",
-        isActive: true, 
-        artistId: artist1.id,
-        albumId: album1.id,
-        audioAssetId: audio2.id,
-      },
-    ],
-  });
+    });
+
+    if (!existing) {
+      await prisma.track.create({
+        data: {
+          title: t.title,
+          durationSeconds: t.durationSeconds,
+          genre: t.genre,
+          tags: [],
+          isActive: true,
+          artistId: artist.id,
+          albumId: album.id,
+          audioAssetId: audioAssets[t.asset].id,
+        },
+      });
+    }
+  }
 
   console.log("✅ Catalog seed completed");
 }
 
 main()
-  .catch(console.error)
+  .catch(err => {
+    console.error("❌ Seed failed", err);
+    process.exit(1);
+  })
   .finally(() => prisma.$disconnect());

@@ -15,11 +15,14 @@ import { PlaylistService } from "./playlist.service";
 import { CreatePlaylistDto } from "./dto/create-playlist.dto";
 import { AddPlaylistItemDto } from "./dto/add-playlist-item.dto";
 import { ReorderPlaylistDto } from "./dto/reorder-playlist.dto";
+import { AddCollaboratorDto } from "./dto/add-collaborator.dto";
+import { CollaborationService } from "./collaboration.service";
+
 
 @Controller("playlists")
 @UseGuards(JwtAuthGuard)
 export class PlaylistController {
-  constructor(private readonly playlists: PlaylistService) {}
+  constructor(private readonly playlists: PlaylistService, private readonly collaboration: CollaborationService) {}
 
   private getUserId(req: Request) {
   return (req as any).user?.userId;
@@ -67,4 +70,32 @@ export class PlaylistController {
   ) {
     return this.playlists.reorder(id, dto.orderedItemIds, this.getUserId(req));
   }
+
+  @Post(":id/collaborators")
+    addCollaborator(
+    @Param("id") playlistId: string,
+    @Body() dto: AddCollaboratorDto,
+    @Req() req: Request
+    ) {
+    return this.collaboration.addCollaborator(
+        playlistId,
+        this.getUserId(req),
+        dto.userId,
+        dto.permission
+    );
+    }
+
+    @Delete(":id/collaborators/:userId")
+    removeCollaborator(
+    @Param("id") playlistId: string,
+    @Param("userId") userId: string,
+    @Req() req: Request
+    ) {
+    return this.collaboration.removeCollaborator(
+        playlistId,
+        this.getUserId(req),
+        userId
+    );
+    }
+
 }
