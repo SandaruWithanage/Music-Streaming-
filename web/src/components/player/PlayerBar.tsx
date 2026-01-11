@@ -183,7 +183,7 @@ export function PlayerBar() {
                         animate={{ y: 0 }}
                         exit={{ y: 100 }}
                         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                        className="fixed bottom-0 left-0 right-0 z-50 h-24 border-t border-white/10 bg-gradient-to-r from-zinc-900/95 via-zinc-800/95 to-zinc-900/95 backdrop-blur-xl"
+                        className="fixed bottom-0 left-0 right-0 z-50 h-24 border-t border-white/10 bg-linear-to-r from-zinc-900/95 via-zinc-800/95 to-zinc-900/95 backdrop-blur-xl"
                     >
                         <div className="mx-auto flex h-full max-w-screen-2xl items-center justify-between px-4">
                             {/* Track Info */}
@@ -195,7 +195,7 @@ export function PlayerBar() {
                                         repeat: isPlaying ? Infinity : 0,
                                         ease: 'linear',
                                     }}
-                                    className="relative h-14 w-14 overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/20"
+                                    className="relative h-14 w-14 overflow-hidden rounded-full bg-linear-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/20"
                                 >
                                     {currentTrack.album?.coverUrl ? (
                                         <Image
@@ -250,7 +250,7 @@ export function PlayerBar() {
                                         onClick={handlePlayPause}
                                         className={cn(
                                             'flex h-12 w-12 items-center justify-center rounded-full',
-                                            'bg-gradient-to-br from-violet-500 to-fuchsia-500',
+                                            'bg-linear-to-br from-violet-500 to-fuchsia-500',
                                             'text-white shadow-lg shadow-violet-500/30',
                                             'transition-shadow hover:shadow-xl hover:shadow-violet-500/40'
                                         )}
