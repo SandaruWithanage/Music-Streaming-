@@ -1,22 +1,20 @@
-// src/recommendations/recommendations.controller.ts
-import { Controller, Get, Req, UseGuards } from "@nestjs/common";
-import type { Request } from "express";
-import { JwtAuthGuard } from "../auth/auth.guard";
-import { RecommendationsService } from "./recommendations.service";
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/auth.guard';
+import { RecommendationsService } from './recommendations.service';
+import { CurrentUser } from '../auth/current-user.decorator';
 
-@Controller("recommendations")
+@Controller('recommendations')
 export class RecommendationsController {
   constructor(private readonly recommendations: RecommendationsService) {}
 
-  @Get("trending")
+  @Get('trending')
   getTrending() {
     return this.recommendations.getTrending();
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get("personal")
-  getPersonal(@Req() req: Request) {
-    const userId = (req as any).user?.userId;
-    return this.recommendations.getPersonal(userId);
+  @Get('personal')
+  getPersonal(@CurrentUser() user: { userId: string }) {
+    return this.recommendations.getPersonal(user.userId);
   }
 }

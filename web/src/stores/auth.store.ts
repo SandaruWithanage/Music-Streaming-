@@ -10,9 +10,14 @@ interface AuthState {
     user: User | null;
     isAuthenticated: boolean;
     _hasHydrated: boolean;
+
+    // Redirect control flag
+    needsLoginRedirect: boolean;
+
     setAuth: (token: string, user: User) => void;
     logout: () => void;
     setHasHydrated: (state: boolean) => void;
+    clearLoginRedirect: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -22,10 +27,16 @@ export const useAuthStore = create<AuthState>()(
             user: null,
             isAuthenticated: false,
             _hasHydrated: false,
+            needsLoginRedirect: false,
 
             setAuth: (token: string, user: User) => {
                 console.log('[AuthStore] setAuth called with token');
-                set({ token, user, isAuthenticated: true });
+                set({
+                    token,
+                    user,
+                    isAuthenticated: true,
+                    needsLoginRedirect: false,
+                });
             },
 
             logout: () => {
@@ -34,18 +45,34 @@ export const useAuthStore = create<AuthState>()(
                     localStorage.removeItem('recently-played');
                     localStorage.removeItem('recently-opened-playlists');
                 }
-                set({ token: null, user: null, isAuthenticated: false });
+                set({
+                    token: null,
+                    user: null,
+                    isAuthenticated: false,
+                });
             },
 
             setHasHydrated: (state: boolean) => {
                 set({ _hasHydrated: state });
             },
+
+            clearLoginRedirect: () => {
+                set({ needsLoginRedirect: false });
+            },
         }),
         {
             name: 'auth-storage',
             storage: createJSONStorage(() => localStorage),
-            // Skip hydration issues with SSR
-            skipHydration: true,
+
+            // ✅ IMPORTANT CHANGE
+            skipHydration: false,
+
+            // ✅ Persist controls hydration completely
+            onRehydrateStorage: () => (state) => {
+                console.log('[AuthStore] Rehydration finished');
+                state?.setHasHydrated(true);
+            },
+
             partialize: (state) => ({
                 token: state.token,
                 user: state.user,
@@ -55,28 +82,15 @@ export const useAuthStore = create<AuthState>()(
     )
 );
 
-// Manual hydration on client side only
-if (typeof window !== 'undefined') {
-    // Mark as hydrated after rehydration
-    const unsubFinishHydration = useAuthStore.persist.onFinishHydration(() => {
-        console.log('[AuthStore] Hydration finished');
-        useAuthStore.setState({ _hasHydrated: true });
-    });
+// ✅ API integration belongs at module level (safe now)
+setOnUnauthorized(() => {
+    console.log('[AuthStore] Unauthorized - logging out');
+    useAuthStore.getState().logout();
+    useAuthStore.setState({ needsLoginRedirect: true });
+});
 
-    // Hydrate the store from localStorage on client
-    useAuthStore.persist.rehydrate();
-
-    // Set up global handlers for API module
-    setOnUnauthorized(() => {
-        console.log('[AuthStore] Unauthorized - logging out');
-        useAuthStore.getState().logout();
-        if (window.location.pathname !== '/login') {
-            window.location.href = '/login';
-        }
-    });
-
-    setGetToken(() => useAuthStore.getState().token);
-}
+setGetToken(() => useAuthStore.getState().token);
 
 // Helper hook to check if store is ready
-export const useIsHydrated = () => useAuthStore((s) => s._hasHydrated);
+export const useIsHydrated = () =>
+    useAuthStore((s) => s._hasHydrated);

@@ -64,16 +64,23 @@ export function PlayerBar() {
         const audio = audioRef.current;
         if (!audio || !streamUrl) return;
 
+        console.log('[Player] Syncing stream URL:', streamUrl);
+
         if (audio.src !== streamUrl) {
+            console.log('[Player] Setting audio.src');
             audio.src = streamUrl;
             audio.load();
         }
 
         if (isPlaying) {
-            audio.play().catch(() => {
-                // Handle autoplay restrictions
-                pause();
-            });
+            console.log('[Player] Attempting to play...');
+            audio.play()
+                .then(() => console.log('[Player] Playback started successfully'))
+                .catch((e) => {
+                    console.error('[Player] Playback failed/autoplay blocked', e);
+                    // Handle autoplay restrictions
+                    pause();
+                });
         } else {
             audio.pause();
         }
@@ -97,6 +104,7 @@ export function PlayerBar() {
         };
 
         const handleEnded = () => {
+            console.log('[Player] Track ended');
             sendEnd();
             const nextTrack = next();
             if (nextTrack) {
@@ -106,9 +114,12 @@ export function PlayerBar() {
             }
         };
 
-        const handleError = () => {
+        const handleError = (e: Event) => {
+            const target = e.target as HTMLAudioElement;
+            console.error('[Player] Audio error:', target.error, target.error?.message);
             // Stream URL expired - refetch
             if (currentTrack && streamExpiresAt && new Date() > streamExpiresAt) {
+                console.log('[Player] Token expired, refreshing...');
                 fetchStream(currentTrack.id);
             }
         };

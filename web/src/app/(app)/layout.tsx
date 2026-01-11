@@ -15,18 +15,49 @@ export default function AppLayout({
     children: React.ReactNode;
 }) {
     const router = useRouter();
+
     const isHydrated = useIsHydrated();
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
     const token = useAuthStore((s) => s.token);
 
-    console.log('[AppLayout] Render - isHydrated:', isHydrated, 'isAuthenticated:', isAuthenticated, 'hasToken:', !!token);
+    // ✅ NEW: redirect flag from store
+    const needsLoginRedirect = useAuthStore((s) => s.needsLoginRedirect);
+    const clearLoginRedirect = useAuthStore((s) => s.clearLoginRedirect);
 
-    // Redirect to login if not authenticated (after hydration)
+    console.log(
+        '[AppLayout] Render',
+        {
+            isHydrated,
+            isAuthenticated,
+            hasToken: !!token,
+            needsLoginRedirect,
+        }
+    );
+
+    // ✅ NEW: handle forced logout redirects (401)
     useEffect(() => {
-        console.log('[AppLayout] useEffect - isHydrated:', isHydrated, 'isAuthenticated:', isAuthenticated, 'hasToken:', !!token);
+        if (!isHydrated) return;
+
+        if (needsLoginRedirect) {
+            console.log('[AppLayout] Redirect requested by store (401 logout)');
+            clearLoginRedirect();
+            router.replace('/login');
+        }
+    }, [isHydrated, needsLoginRedirect, clearLoginRedirect, router]);
+
+    // Existing auth guard logic
+    useEffect(() => {
+        console.log(
+            '[AppLayout] Auth check',
+            {
+                isHydrated,
+                isAuthenticated,
+                hasToken: !!token,
+            }
+        );
 
         if (isHydrated && !isAuthenticated && !token) {
-            console.log('[AppLayout] ⚠️ REDIRECTING TO LOGIN - not authenticated');
+            console.log('[AppLayout] ⚠️ Redirecting to login (not authenticated)');
             router.replace('/login');
         }
     }, [isHydrated, isAuthenticated, token, router]);

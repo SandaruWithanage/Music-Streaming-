@@ -3,6 +3,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { QueryProvider } from '@/providers/react-query';
+import { AuthInit } from '@/providers/auth-init';
 import { Toaster } from 'sonner';
 import './globals.css';
 
@@ -32,16 +33,20 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-zinc-950 font-sans text-white antialiased`}
       >
         <QueryProvider>
-          {children}
-          <Toaster
-            position="top-right"
-            theme="dark"
-            toastOptions={{
-              classNames: {
-                toast: 'bg-zinc-900 border-zinc-800',
-              },
-            }}
-          />
+          {/* ✅ Initialize auth → API wiring ONCE on client */}
+          <AuthInit>
+            {children}
+
+            <Toaster
+              position="top-right"
+              theme="dark"
+              toastOptions={{
+                classNames: {
+                  toast: 'bg-zinc-900 border-zinc-800',
+                },
+              }}
+            />
+          </AuthInit>
         </QueryProvider>
       </body>
     </html>

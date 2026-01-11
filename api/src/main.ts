@@ -1,11 +1,12 @@
+// Load environment variables FIRST, before any other imports
+// This is critical because module decorators read process.env at import time
+import * as dotenv from "dotenv";
+dotenv.config({ path: ".env" });
+dotenv.config({ path: ".env.local", override: true });
+
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { ValidationPipe } from "@nestjs/common";
-import * as dotenv from "dotenv";
-
-// Load .env first, then .env.local overrides
-dotenv.config({ path: ".env" });
-dotenv.config({ path: ".env.local", override: true });
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -24,7 +25,11 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT ?? 4000;
+  console.log(`🚀 Server starting on port ${port}`);
+  console.log(`🔑 JWT_SECRET configured: ${process.env.JWT_SECRET ? 'yes' : 'NO - MISSING!'}`);
+
+  await app.listen(port);
 }
 
 bootstrap();

@@ -38,13 +38,21 @@ export async function apiFetch<T>(
         ...fetchOptions.headers,
     };
 
-    // Attach auth token if available and not skipped
-    if (!skipAuth && getToken) {
-        const token = getToken();
-        console.log('[API] Token for', endpoint, ':', token ? 'present' : 'missing');
-        if (token) {
-            (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-        }
+    // ✅ Capture the token ONCE for this request
+    const tokenUsedForThisRequest =
+        !skipAuth && getToken ? getToken() : null;
+
+    console.log(
+        '[API] Token for',
+        endpoint,
+        ':',
+        tokenUsedForThisRequest ? 'present' : 'missing'
+    );
+
+    // Attach auth token if available
+    if (tokenUsedForThisRequest) {
+        (headers as Record<string, string>)['Authorization'] =
+            `Bearer ${tokenUsedForThisRequest}`;
     }
 
     const url = `${API_URL}${endpoint}`;
@@ -58,18 +66,18 @@ export async function apiFetch<T>(
 
         console.log('[API] Response:', endpoint, response.status);
 
-        // Handle 401 Unauthorized - trigger global logout
-        // BUT only if we actually sent a token (meaning we expected to be authenticated)
+        // ✅ Safe 401 handling
         if (response.status === 401) {
-            const hadToken = getToken?.() !== null;
-            console.log('[API] Got 401, had token:', hadToken);
+            const sentAuthHeader = !!tokenUsedForThisRequest;
 
-            // Only logout if we sent a token and it was rejected
-            // Don't logout for endpoints that don't require auth
-            if (hadToken && onUnauthorized && !skipAuth) {
+            console.log('[API] Got 401, sent token:', sentAuthHeader);
+
+            // Only logout if THIS request actually sent a token
+            if (sentAuthHeader && onUnauthorized && !skipAuth) {
                 console.log('[API] Triggering logout due to 401');
                 onUnauthorized();
             }
+
             throw new ApiError('Unauthorized', 401);
         }
 
@@ -78,7 +86,7 @@ export async function apiFetch<T>(
             return undefined as T;
         }
 
-        // Handle error responses
+        // Handle other error responses
         if (!response.ok) {
             let message = response.statusText;
             try {
@@ -93,11 +101,12 @@ export async function apiFetch<T>(
         // Parse JSON response
         const data = await response.json();
         return data as T;
+
     } catch (error) {
         if (error instanceof ApiError) {
             throw error;
         }
-        // Network error or other
+
         console.error('[API] Network error:', error);
         throw new ApiError('Network error. Please try again.', 0);
     }
